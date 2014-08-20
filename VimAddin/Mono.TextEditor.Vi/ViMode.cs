@@ -941,6 +941,23 @@ namespace VimAddin
 					case '.':
 						RepeatLastAction ();
 						return;
+
+                    case 'f':
+                        Status = "forward to {char}";
+                        CurState = State.ForwardTo;
+                        return;
+                    case 't':
+                        Status = "forward before {char}";
+                        CurState = State.ForwardBefore;
+                        return;
+                    case 'F':
+                        Status = "backward to {char}";
+                        CurState = State.BackwardTo;
+                        return;
+                    case 'T':
+                        Status = "backward after {char}";
+                        CurState = State.BackwardAfter;
+                        return;
 					}
 					
 				}
@@ -1461,8 +1478,50 @@ namespace VimAddin
 				}
 
 				return;
+
+            case State.ForwardTo: 
+            case State.ForwardBefore: { 
+                var index = CharIndexAfterCaret((char)unicodeKey);
+                if(index > 0) {
+                    var newPos = Data.Caret.Offset + index;
+                    if(CurState == State.ForwardBefore) {
+                        newPos--;
+                    }
+                    Data.Caret.Offset = newPos;
+                }
+                Reset("");
+                break;
+            }
+
+            case State.BackwardTo: 
+            case State.BackwardAfter: { 
+                var index = CharIndexBeforeCaret((char)unicodeKey);
+                if (index > 0) {
+                    var newPos = Data.Document.GetLine(Caret.Line).Offset + index;
+                    if (CurState == State.BackwardAfter) {
+                        newPos++;
+                    }
+                    Data.Caret.Offset = newPos;
+                }
+                Reset("");
+                break;
+            }
 			}
 		}
+
+        static int CharIndexBeforeCaret(char ch)
+        {
+            var lineSegment = Data.Document.GetLine(Caret.Line);
+            var text = Editor.Document.GetTextBetween(lineSegment.Offset, Data.Caret.Offset);
+            return text.Length == 0 ? -1 : text.LastIndexOf(ch, text.Length - 1);
+        }
+
+        static int CharIndexAfterCaret(char ch)
+        {
+            var lineSegment = Data.Document.GetLine(Caret.Line);
+            var text = Editor.Document.GetTextBetween(Data.Caret.Offset, lineSegment.EndOffset);
+            return text.Length == 0 ? -1 : text.IndexOf(ch, 1);
+        }
 
 		static bool IsInnerOrOuterMotionKey (uint unicodeKey, ref Motion motion)
 		{
@@ -1746,7 +1805,11 @@ namespace VimAddin
 			GoToMark,
 			NameMacro,
 			PlayMacro,
-			Confirm
+			Confirm,
+            ForwardTo,
+            ForwardBefore,
+            BackwardTo,
+            BackwardAfter,
 		}
 	}
 
