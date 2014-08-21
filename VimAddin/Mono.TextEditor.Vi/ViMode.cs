@@ -76,6 +76,13 @@ namespace VimAddin
 				}
 			}
 		}
+
+        protected CharNavMotion CurCharNavMotion
+        {
+            get;
+            set;
+        }
+
 		protected State PrevState { get; set; }
 
 		Motion motion;
@@ -566,6 +573,7 @@ namespace VimAddin
 			lastActionStarted = false;
 			PrevState = State.Normal;
 			CurState = State.Normal;
+            CurCharNavMotion = CharNavMotion.Normal;
 			ResetEditorState (Data);
 			
 			commandBuffer.Length = 0;
@@ -708,6 +716,44 @@ namespace VimAddin
 				numericPrefix += (char)unicodeKey;
 				return;
 			}
+
+            switch (CurCharNavMotion){
+                case CharNavMotion.Normal:
+                    break;
+                case CharNavMotion.ForwardTo: 
+                case CharNavMotion.ForwardBefore:
+                    { 
+                        var index = Editor.CharIndexAfterCaret((char)unicodeKey);
+                        if (index > 0)
+                        {
+                            var newPos = Data.Caret.Offset + index;
+                            if (CurCharNavMotion == CharNavMotion.ForwardBefore)
+                            {
+                                newPos--;
+                            }
+                            Data.Caret.Offset = newPos;
+                        }
+                        Reset(string.Empty);
+                        return;
+                    }
+
+                case CharNavMotion.BackwardTo: 
+                case CharNavMotion.BackwardAfter:
+                    { 
+                        var index = Editor.CharIndexBeforeCaret((char)unicodeKey);
+                        if (index > 0)
+                        {
+                            var newPos = Editor.Document.GetLine(Caret.Line).Offset + index;
+                            if (CurCharNavMotion == CharNavMotion.BackwardAfter)
+                            {
+                                newPos++;
+                            }
+                            Data.Caret.Offset = newPos;
+                        }
+                        Reset(string.Empty);
+                        return;
+                    }
+            }
 			
 			switch (CurState) {
 			case State.Unknown:
@@ -947,19 +993,19 @@ namespace VimAddin
 
                     case 'f':
                         Status = "forward to {char}";
-                        CurState = State.ForwardTo;
+                        CurCharNavMotion = CharNavMotion.ForwardTo;
                         return;
                     case 't':
                         Status = "forward before {char}";
-                        CurState = State.ForwardBefore;
+                        CurCharNavMotion = CharNavMotion.ForwardBefore;
                         return;
                     case 'F':
                         Status = "backward to {char}";
-                        CurState = State.BackwardTo;
+                        CurCharNavMotion = CharNavMotion.BackwardTo;
                         return;
                     case 'T':
                         Status = "backward after {char}";
-                        CurState = State.BackwardAfter;
+                        CurCharNavMotion = CharNavMotion.BackwardAfter;
                         return;
 					}
 					
@@ -1482,37 +1528,8 @@ namespace VimAddin
 
 				return;
 
-            case State.ForwardTo: 
-            case State.ForwardBefore: { 
-                var index = Editor.CharIndexAfterCaret((char)unicodeKey);
-                if(index > 0) {
-                    var newPos = Data.Caret.Offset + index;
-                    if(CurState == State.ForwardBefore) {
-                        newPos--;
-                    }
-                    Data.Caret.Offset = newPos;
-                }
-                Reset("");
-                break;
-            }
-
-            case State.BackwardTo: 
-            case State.BackwardAfter: { 
-                var index = Editor.CharIndexBeforeCaret((char)unicodeKey);
-                if (index > 0) {
-                    var newPos = Editor.Document.GetLine(Caret.Line).Offset + index;
-                    if (CurState == State.BackwardAfter) {
-                        newPos++;
-                    }
-                    Data.Caret.Offset = newPos;
-                }
-                Reset("");
-                break;
-            }
 			}
 		}
-
-
 
 		static bool IsInnerOrOuterMotionKey (uint unicodeKey, ref Motion motion)
 		{
@@ -1797,11 +1814,15 @@ namespace VimAddin
 			NameMacro,
 			PlayMacro,
 			Confirm,
+		}
+
+        protected enum CharNavMotion{
+            Normal,
             ForwardTo,
             ForwardBefore,
             BackwardTo,
             BackwardAfter,
-		}
+        }
 	}
 
 	public enum Motion {
