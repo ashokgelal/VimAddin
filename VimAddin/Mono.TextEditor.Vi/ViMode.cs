@@ -33,6 +33,9 @@ using System.Collections.Generic;
 using System.Linq;
 using Mono.TextEditor;
 using MonoDevelop.Ide.CodeFormatting;
+using VimAddin.Helpers;
+
+
 namespace VimAddin
 {
 	/**
@@ -1481,7 +1484,7 @@ namespace VimAddin
 
             case State.ForwardTo: 
             case State.ForwardBefore: { 
-                var index = CharIndexAfterCaret((char)unicodeKey);
+                var index = Editor.CharIndexAfterCaret((char)unicodeKey);
                 if(index > 0) {
                     var newPos = Data.Caret.Offset + index;
                     if(CurState == State.ForwardBefore) {
@@ -1495,9 +1498,9 @@ namespace VimAddin
 
             case State.BackwardTo: 
             case State.BackwardAfter: { 
-                var index = CharIndexBeforeCaret((char)unicodeKey);
+                var index = Editor.CharIndexBeforeCaret((char)unicodeKey);
                 if (index > 0) {
-                    var newPos = Data.Document.GetLine(Caret.Line).Offset + index;
+                    var newPos = Editor.Document.GetLine(Caret.Line).Offset + index;
                     if (CurState == State.BackwardAfter) {
                         newPos++;
                     }
@@ -1509,19 +1512,7 @@ namespace VimAddin
 			}
 		}
 
-        static int CharIndexBeforeCaret(char ch)
-        {
-            var lineSegment = Data.Document.GetLine(Caret.Line);
-            var text = Editor.Document.GetTextBetween(lineSegment.Offset, Data.Caret.Offset);
-            return text.Length == 0 ? -1 : text.LastIndexOf(ch, text.Length - 1);
-        }
 
-        static int CharIndexAfterCaret(char ch)
-        {
-            var lineSegment = Data.Document.GetLine(Caret.Line);
-            var text = Editor.Document.GetTextBetween(Data.Caret.Offset, lineSegment.EndOffset);
-            return text.Length == 0 ? -1 : text.IndexOf(ch, 1);
-        }
 
 		static bool IsInnerOrOuterMotionKey (uint unicodeKey, ref Motion motion)
 		{
